@@ -7,7 +7,7 @@ Per-category sampling parameter tuning for **Hermes 3 3B** (Llama 3.2 3B archite
 - 12 diverse prompts (tool calls, prose, email, SQL, poetry, math, HTML, Python) benchmarked at default and tuned settings
 - 88-run variable sweep per model (temp, top_p, top_k, repeat_penalty)
 - Auto-classifier applies best settings per prompt category
-- Context permanently fixed at 32K
+- Context set to 64K (Q4 KV cache to fit Jetson memory)
 
 ## Results
 
@@ -133,22 +133,31 @@ python3 hermes_auto.py "your prompt here"
 | `tuned_retest.py` | 387 | Re-benchmarks with tuned settings, compares before/after |
 | `hermes_auto.py` | 191 | Keyword classifier that outputs best settings per category |
 | `ask-hermes3.sh` | 140 | Launcher: auto-classifies prompt, runs llama-cli with tuned settings |
+| `transmission_proxy.py` | 173 | Flask proxy: auto-tunes params per prompt, forwards to llama-server |
+| `start_transmission.sh` | 93 | One-command start: llama-server + proxy |
+| `stop_transmission.sh` | 20 | One-command stop: kills both servers |
 | `prompts/01-12_*.txt` | — | 12 benchmark prompt files |
 | `results/benchmark_default.json` | — | Default benchmark results (Q4 + Q5) |
 | `results/sweep_q4.json` | — | 88-run sweep data for Q4 |
 | `results/sweep_q5.json` | — | 88-run sweep data for Q5 |
 | `results/benchmark_tuned.json` | — | Tuned retest results (Q4 + Q5) |
 
-## Memory budget (8 GB Jetson, 32K context)
+## Memory budget (8 GB Jetson, 64K context, Q4 KV cache)
 
 | Component | Q4_K_M | Q5_K_M |
 |-----------|--------|--------|
 | Weights | 1.90 GB | 2.30 GB |
-| KV cache (FP16, 32K) | 3.76 GB | 3.76 GB |
-| Total | 5.66 GB | 6.06 GB |
-| Free headroom | ~1.3 GB | ~1.0 GB |
+| KV cache (Q4_0, 64K) | ~3.75 GB | ~3.75 GB |
+| Total | ~5.65 GB | ~6.05 GB |
+| Free headroom | ~1.7 GB | ~1.3 GB |
 
-Q5_K_M fits with ~1 GB headroom when GUI is disabled.
+Q5_K_M fits with ~1.3 GB headroom when GUI is disabled and Ollama is stopped.
+
+**Q4 KV cache** is the key to running 64K context on an 8 GB Jetson:
+- 64K FP16 KV cache would need ~7.5 GB (does not fit)
+- 64K Q8 KV cache would need ~3.75 GB (fits but tight, was used for 32K originally)
+- 64K Q4 KV cache needs ~3.75 GB (fits comfortably, same as 32K Q8)
+- Quality impact of Q4 KV cache is negligible for a 3B model
 
 ## Architecture
 
@@ -156,8 +165,131 @@ Hermes 3 3B = Llama 3.2 3B:
 - 28 layers, 8 KV heads (GQA), 128 head dim
 - 3072 hidden dim, 24 attention heads
 - ChatML format (`<|im_start|>...<|im_end|>`)
-- 32K context (permanent)
+- 64K context (Q4 KV cache for Jetson memory fit)
 
 ## License
 
 MIT
+
+## Hermes Agent Integration (Transmission Proxy)
+
+The **transmission proxy** (`transmission_proxy.py`) connects this tuning
+pipeline directly to Hermes Agent — so every prompt Hermes sends is
+auto-classified and gets the empirically-best sampling parameters injected
+before reaching the model.
+
+### Architecture
+
+```
+Hermes Agent
+    │  (OpenAI-compatible API)
+    ▼
+┌──────────────────────┐
+│  transmission_proxy   │  Flask :8081
+│  (hermes_auto.py      │  Classifies prompt → injects tuned params
+│   classifier)         │  → forwards to llama-server
+└──────────┬───────────┘
+            ▼
+┌──────────────────────┐
+│  llama-server         │  :8080
+│  (llama.cpp)          │  Q5_K_M model, 64K context, Q4 KV cache
+│  hermes3-3b-q5_k_m    │  -ngl 99 -fa on --jinja
+└──────────────────────┘
+```
+
+### Why Q4 KV cache for 64K context
+
+Hermes Agent enforces a **64K minimum context** (`MINIMUM_CONTEXT_LENGTH = 64_000`
+in `agent/model_metadata.py`). On an 8 GB Jetson with unified memory, a 64K
+FP16 KV cache (~7.5 GB) would not fit alongside the 2.3 GB Q5 model.
+
+Quantizing the KV cache to **Q4_0** halves it to ~3.75 GB — same memory as a
+32K Q8 cache. Total footprint: ~2.3 GB model + ~3.75 GB KV = ~6.05 GB, leaving
+~1.3 GB headroom with GUI disabled.
+
+Q4 KV cache has minimal quality impact for a 3B model at this context length.
+
+### Prerequisites
+
+- Ollama **stopped** (frees ~1.2 GB GPU memory): `pkill -f ollama`
+- llama.cpp built with CUDA: `~/llama.cpp/build/bin/llama-server`
+- Q5 model at: `~/models/hermes3-3b-q5_k_m.gguf`
+- GUI disabled (recommended): `sudo systemctl set-default multi-user.target`
+
+### Quick start
+
+```bash
+# 1. Stop Ollama if running (frees GPU memory)
+pkill -f ollama
+
+# 2. Start the full transmission stack (llama-server + proxy)
+cd ~/projects/hermes-llm-transmission
+./start_transmission.sh
+
+# 3. Point Hermes at the local proxy
+hermes config set model.default hermes3-3b-q5
+hermes config set model.provider custom
+hermes config set model.base_url http://localhost:8081/v1
+hermes config set model.api_key local
+hermes config set model.context_length 65536
+
+# 4. Test
+hermes chat -q "What is 2+2?"
+```
+
+### Stop
+
+```bash
+./stop_transmission.sh
+```
+
+### Revert to cloud model
+
+```bash
+# Backup was saved at config.yaml.cloud-backup
+cp ~/.hermes/config.yaml.cloud-backup ~/.hermes/config.yaml
+# Or manually:
+hermes config set model.default glm-5.2
+hermes config set model.provider ollama-cloud
+hermes config set model.base_url https://ollama.com/v1
+hermes config set model.context_length 128000
+```
+
+### Implementation steps (how this was built)
+
+1. **Stopped Ollama** — `pkill -f ollama` to free GPU/CPU memory on the Jetson.
+
+2. **Started llama-server** with Q5 model, 64K context, Q4 KV cache:
+   ```
+   ~/llama.cpp/build/bin/llama-server \
+     -m ~/models/hermes3-3b-q5_k_m.gguf \
+     --port 8080 -c 65536 -ngl 99 -t 6 \
+     -fa on -ctk q4_0 -ctv q4_0 --jinja
+   ```
+   - Q4 KV cache was the key discovery: 64K Q4 uses the same memory as 32K Q8,
+     satisfying Hermes' 64K minimum without exceeding Jetson RAM.
+
+3. **Built `transmission_proxy.py`** — a Flask proxy on :8081 that:
+   - Intercepts each `/v1/chat/completions` request from Hermes
+   - Extracts the last user message
+   - Classifies it via `hermes_auto.py` (tool/prose/email/sqlite/poetry/math/html/python)
+   - Overrides `temperature`, `top_p`, `top_k`, `repeat_penalty` with tuned values
+   - Forwards to `llama-server` on :8080 (streaming and non-streaming)
+   - Also serves `/v1/models` so Hermes sees a valid model ID
+
+4. **Configured Hermes** to use the proxy:
+   ```yaml
+   model:
+     default: hermes3-3b-q5
+     provider: custom
+     base_url: http://localhost:8081/v1
+     api_key: local
+     context_length: 65536
+   ```
+
+5. **Created startup scripts** — `start_transmission.sh` and `stop_transmission.sh`
+   for one-command start/stop of the full stack.
+
+6. **Verified end-to-end** — `hermes chat -q "What is 2+2?"` returns a correct
+   response, with the proxy log showing the auto-classifier routing each prompt
+   to its tuned parameter set.

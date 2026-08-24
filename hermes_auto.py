@@ -126,7 +126,7 @@ SETTINGS = {
     "python":    {"temp": 0.1,  "top_p": 0.98, "top_k": 40,  "repeat_penalty": 1.15, "tokens": 4096},
 }
 
-CONTEXT = 32768  # ALWAYS 32K per user instruction
+CONTEXT = 65536  # 64K — Hermes minimum, Q4 KV cache fits in Jetson memory
 
 # ── Scoring ──────────────────────────────────────────────────────────
 def score_category(text, patterns):

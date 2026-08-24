@@ -2,4 +2,4 @@
 *.gguf
 
 # Results (large JSON files with full output text)
-results/
+results/__pycache__/
