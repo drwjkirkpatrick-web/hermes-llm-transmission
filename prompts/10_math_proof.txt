@@ -1,0 +1,1 @@
+Prove that the square root of 2 is irrational. Use a proof by contradiction. State each step clearly with justification. Begin with: "Theorem: sqrt(2) is irrational." Then prove it in a rigorous mathematical style suitable for an undergraduate mathematics course.

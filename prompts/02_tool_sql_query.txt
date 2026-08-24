@@ -1,0 +1,10 @@
+You are a clinical assistant with access to a patient database via SQL. You need to look up a patient's recent lab results.
+
+Write the exact SQL query you would execute to:
+1. Retrieve the most recent 5 thyroid panel results (TSH, Free T3, Free T4, TPO antibodies, Tg antibodies) for a patient with ID 12345
+2. Include the test date, result value, reference range, and whether the result was flagged as abnormal
+3. Sort by date descending
+
+The database has tables: patients (patient_id, name, dob), lab_results (result_id, patient_id, test_name, result_value, unit, ref_low, ref_high, result_date, is_abnormal).
+
+Write both the SQL query and a JSON tool_call wrapper that an agent would use to execute it.

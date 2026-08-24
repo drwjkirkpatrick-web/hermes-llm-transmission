@@ -1,0 +1,12 @@
+Write a Python class called PatientTracker that manages a small clinic's patient records using SQLite. The class should:
+
+1. Initialize a SQLite database with a patients table (id, name, dob, phone, email, primary_complaint, intake_date, status)
+2. Implement methods: add_patient(), get_patient(), update_status(), search_by_complaint(), get_all_patients()
+3. add_patient() should validate email format using regex and phone format (XXX-XXX-XXXX)
+4. search_by_complaint() should support partial matching and return matching patients
+5. update_status() should only allow statuses from a predefined set: 'intake', 'active', 'on_hold', 'discharged'
+6. Include type hints, docstrings, and proper exception handling with custom exception classes
+7. Use context managers for database connections
+8. Include a __main__ block that demonstrates all methods with sample data
+
+Use only standard library modules (sqlite3, re, typing, dataclasses). Write production-quality code.

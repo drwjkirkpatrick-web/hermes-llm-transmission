@@ -1,0 +1,17 @@
+Write a complete Python script that creates a SQLite database for tracking botanical medicine inventory. The database should have three tables:
+
+1. herbs (id INTEGER PRIMARY KEY, name TEXT UNIQUE, latin_name TEXT, category TEXT, reorder_level INTEGER)
+2. batches (id INTEGER PRIMARY KEY, herb_id INTEGER REFERENCES herbs(id), quantity_grams REAL, received_date TEXT, expiry_date TEXT, supplier TEXT)
+3. dispensing_log (id INTEGER PRIMARY KEY, herb_id INTEGER REFERENCES herbs(id), patient_initials TEXT, amount_grams REAL, dispensed_date TEXT, notes TEXT)
+
+The script should:
+- Create the database and tables with proper schema
+- Insert at least 5 sample herbs with realistic data
+- Insert at least 3 batches across different herbs
+- Demonstrate a query to find herbs below reorder level (quantity on hand < reorder_level)
+- Demonstrate a query to calculate total quantity on hand per herb (sum across batches, excluding expired)
+- Demonstrate a query to show dispensing history for a specific herb in the last 30 days
+- Include error handling and connection cleanup
+- Print all query results in a readable format
+
+Use only the sqlite3 standard library module. Include type hints and docstrings.

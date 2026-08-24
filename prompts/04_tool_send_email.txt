@@ -1,0 +1,17 @@
+You are an email assistant. Write the exact tool call (as JSON) to send an email with the following requirements:
+
+To: dr.smith@clinic.org
+Cc: front.desk@clinic.org
+Subject: Patient Referral - Hashimoto's Thyroiditis - Lab Results Attached
+
+Body requirements:
+1. Professional medical referral tone
+2. Mention the patient (use initials "J.D." for privacy) 
+3. Summarize key findings: elevated TSH (8.2 mIU/L), positive anti-TPO (>1000 IU/mL), normal Free T4
+4. Request collaborative care for autoimmune thyroid management
+5. Note that full lab panel is attached as PDF
+6. Suggest a phone consult within 2 weeks
+
+Write:
+1. The JSON tool_call object with all email parameters (to, cc, subject, body, attachments)
+2. The complete email body text as it would appear in the email

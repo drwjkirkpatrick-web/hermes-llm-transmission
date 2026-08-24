@@ -1,0 +1,14 @@
+You are a calendar management assistant. A patient needs to schedule a 90-minute initial consultation. The naturopath's available slots this week are:
+
+Monday: 9:00 AM, 11:00 AM, 2:00 PM
+Tuesday: 10:00 AM, 1:00 PM, 3:30 PM  
+Wednesday: 9:00 AM, 10:30 AM, 2:00 PM
+Thursday: 1:00 PM, 3:00 PM
+Friday: 9:00 AM, 11:30 AM
+
+The patient prefers mornings, cannot do Mondays, and needs the appointment within the next 3 days.
+
+Write the exact tool call (as JSON) to book the best available slot. Include:
+1. The tool function name and arguments
+2. Your reasoning for choosing this slot
+3. A confirmation message you would send to the patient

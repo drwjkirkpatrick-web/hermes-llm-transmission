@@ -1,0 +1,9 @@
+You are a research assistant with access to a web_search tool. A user asks: "What are the latest findings on the gut microbiome's role in autoimmune thyroid conditions?" 
+
+Write the exact tool call you would make, including:
+1. The JSON function call schema with the search query
+2. What parameters you would pass (query string, result limit, any filters)
+3. How you would process the returned results to extract relevant findings
+4. A follow-up tool call you might make based on initial results
+
+Format your response as structured JSON with a "tool_calls" array.

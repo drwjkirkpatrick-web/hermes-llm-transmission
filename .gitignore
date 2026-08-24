@@ -1,0 +1,5 @@
+# Models (download separately from Ollama registry)
+*.gguf
+
+# Results (large JSON files with full output text)
+results/
